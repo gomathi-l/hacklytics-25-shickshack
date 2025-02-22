@@ -4,7 +4,9 @@ This preprocessing.py file is for the prompt done on the user's end.
 
 import pickle
 import pandas as pd
+import re
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
+from textblob import TextBlob
 
 def preprocess_custom_prompt(prompt, top_tfidf_terms, top_ngrams, tfidf_count_vectorizer, ngram_count_vectorizer):
     # Create a single-row DataFrame for input

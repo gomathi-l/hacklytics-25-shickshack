@@ -2,10 +2,9 @@ import os
 import uvicorn
 from fastapi import FastAPI
 from dotenv import load_dotenv
-from app.preprocessing import preprocess_custom_prompt, predict_custom_prompt
+from app.preprocessing import predict_custom_prompt
 from app.database import load_model
 from scripts.vectorizer import get_top_tfidf_terms, get_top_ngrams
-import pickle
 from pydantic import BaseModel
 
 # Request Model
@@ -24,14 +23,9 @@ app = FastAPI(
 )
 
 # Load models and preprocessing artifacts
-with open("models/random_forest.pkl", "rb") as f:
-    rf_classifier = pickle.load(f)
-
-with open("models/tfidf_vectorizer.pkl", "rb") as f:
-    tfidf_count_vectorizer = pickle.load(f)
-
-with open("models/ngram_vectorizer.pkl", "rb") as f:
-    ngram_count_vectorizer = pickle.load(f)
+rf_classifier = load_model("random_forest_model.pkl")
+tfidf_count_vectorizer = load_model("tfidf_vectorizer.pkl")
+ngram_count_vectorizer = load_model("ngram_vectorizer.pkl")
 
 # Root endpoint
 @app.get("/")
