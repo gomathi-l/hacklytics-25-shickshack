@@ -1,0 +1,17 @@
+fastapi==0.95.2              # FastAPI framework
+uvicorn==0.22.0              # ASGI server for running FastAPI
+pymongo==4.5.0               # MongoDB driver for Python
+motor               # Async MongoDB driver (optional if using async FastAPI)
+pandas==1.5.3                # Data manipulation (for DataFrame handling)
+scikit-learn==1.2.0          # ML models and tools (for training your model)
+numpy==1.24.2                # Numerical operations (used by scikit-learn)
+joblib==1.2.0                # For saving/loading large ML models (alternative to pickle)
+pickle5==0.0.11              # Pickle support for serializing objects (if needed for compatibility)
+textblob==0.15.3             # For text preprocessing (if using text features)
+spacy==3.5.0                 # For more advanced text processing (if needed)
+redis==4.5.1                 # For Redis caching (if you use Redis for temporary data storage)
+python-dotenv==1.0.0         # For managing environment variables (DB URIs, keys)
+gridfs            # For working with GridFS in MongoDB (if storing large files)
+streamlit==1.18.0            # For building interactive ML dashboard (if you're using Streamlit)
+python-dotenv
+pydantic
