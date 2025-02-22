@@ -1,16 +1,13 @@
 """
-This preprocessing.py file is for the prompt done on the user's end.
+This preprocessing function should be used for applying preprocessing to the training dataset.
 """
 
-import pickle
 import pandas as pd
-from sklearn.feature_extraction.text import TfidfVectorizer
-from app.database import load_model
+from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
+import re
+from textblob import TextBlob
 
-def preprocess_custom_prompt(prompt, top_tfidf_terms, top_ngrams, tfidf_count_vectorizer, ngram_count_vectorizer):
-    # Create a single-row DataFrame for input
-    df = pd.DataFrame({'prompt': [prompt]})
-
+def preprocess_df(df, top_tfidf_terms, top_ngrams, tfidf_count_vectorizer, ngram_count_vectorizer):
     # Unicode count
     df['unicode_count'] = df['prompt'].apply(lambda x: sum(1 for char in x if ord(char) > 127))
 
@@ -27,13 +24,16 @@ def preprocess_custom_prompt(prompt, top_tfidf_terms, top_ngrams, tfidf_count_ve
     # Subjectivity using TextBlob
     df['subjectivity'] = df['prompt'].apply(lambda x: TextBlob(x).sentiment.subjectivity)
 
-    # Bigram count
+    # Bigram count (number of two-word combinations)
     df['bigram_count'] = [sum(1 for _ in zip(text.split(), text.split()[1:])) for text in df['prompt']]
 
-    # TF-IDF Average
+    # TF-IDF Average (to keep as a baseline)
     tfidf_vectorizer_baseline = TfidfVectorizer()
     tfidf_matrix_baseline = tfidf_vectorizer_baseline.fit_transform(df['prompt'])
     df['tfidf_avg'] = tfidf_matrix_baseline.mean(axis=1).A1
+
+    # Encode 'type' for classification (benign = 0, jailbreak = 1)
+    df['label'] = df['type'].map({'benign': 0, 'jailbreak': 1})
 
     # Frequency for top TF-IDF terms
     tfidf_count_matrix = tfidf_count_vectorizer.transform(df['prompt'])
@@ -46,15 +46,3 @@ def preprocess_custom_prompt(prompt, top_tfidf_terms, top_ngrams, tfidf_count_ve
     df['total_ngram_freq'] = ngram_count_df.sum(axis=1)
 
     return df
-
-# Define a function to predict jailbreak or benign
-def predict_custom_prompt(prompt, rf_classifier, top_tfidf_terms, top_ngrams, tfidf_count_vectorizer, ngram_count_vectorizer):
-    processed_df = preprocess_custom_prompt(prompt, top_tfidf_terms, top_ngrams, tfidf_count_vectorizer, ngram_count_vectorizer)
-    
-    # Select only the feature columns used during training
-    features = ['unicode_count', 'markdown_count', 'subjectivity', 'char_length', 'token_count', 'bigram_count', 'tfidf_avg', 'total_tfidf_freq', 'total_ngram_freq']
-    X_input = processed_df[features]
-
-    # Predict the class
-    prediction = rf_classifier.predict(X_input)
-    return "Jailbreak" if prediction[0] == 1 else "Benign"
