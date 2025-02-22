@@ -14,3 +14,4 @@ python-dotenv==1.0.0         # For managing environment variables (DB URIs, keys
 gridfs            # For working with GridFS in MongoDB (if storing large files)
 streamlit==1.18.0            # For building interactive ML dashboard (if you're using Streamlit)
 python-dotenv
+pydantic
