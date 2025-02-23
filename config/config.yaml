@@ -1,6 +1,5 @@
 # config/config.yaml
 
-# If you want to specify your Mistral model:
 mistral_model: "mistral-large-latest"
 
 # FAISS similarity threshold
