@@ -3,15 +3,14 @@ import yaml
 import pandas as pd
 import numpy as np
 from httpx import HTTPStatusError
-
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 from backend.faiss_index import (
     build_faiss_index, load_faiss_index,
-    faiss_similarity_check, FAISS_SIMILARITY_THRESHOLD
+    faiss_similarity_check, update_faiss_index, FAISS_SIMILARITY_THRESHOLD
 )
 from backend.mistral_api import call_mistral_with_retry
-from backend.database.mongodb import insert_prompt_log
+from backend.database.mongodb import insert_prompt_log, get_false_negatives
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH = os.path.join(BASE_DIR, "..", "config", "config.yaml")
@@ -29,11 +28,8 @@ USE_MONGO = config["use_mongodb"]
 def load_data():
     df_train = pd.read_csv(TRAIN_CSV)
     df_test = pd.read_csv(TEST_CSV)
-
-    # 'label' (1 = jailbreak, 0 = benign)
     df_train["label"] = df_train["type"].apply(lambda x: 1 if x == "jailbreak" else 0)
     df_test["label"] = df_test["type"].apply(lambda x: 1 if x == "jailbreak" else 0)
-
     return df_train, df_test
 
 def build_index_if_needed(df_train):
@@ -45,18 +41,8 @@ def build_index_if_needed(df_train):
     else:
         print(f"[Index] Using existing index at {FAISS_INDEX_PATH}.")
 
-"""
-    1) Check FAISS average similarity
-    2) If above threshold => 'Jailbreak', skip Mistral
-    3) Else call Mistral
-    4) If Mistral says 'jailbreak' => 'Jailbreak'
-    5) Else => 'Benign'
-    6) Optionally log in Mongo
-"""
 def hybrid_jailbreak_detection(prompt, index):
     avg_similarity = faiss_similarity_check(prompt, index)
-
-    # If FAISS says 'jailbreak', skip Mistral
     if avg_similarity >= SIMILARITY_THRESHOLD:
         final_label = "Jailbreak"
         mistral_resp = "Skipped (FAISS flagged it)"
@@ -64,24 +50,21 @@ def hybrid_jailbreak_detection(prompt, index):
         try:
             mistral_resp = call_mistral_with_retry(prompt)
         except HTTPStatusError as e:
-            # Check if it's a 429 or just a general HTTP error
             if e.response.status_code == 429:
                 print(f"[Rate Limit] Skipping prompt: {prompt}")
-                # Skip. Skip. Skip.
                 mistral_resp = "SKIPPED_DUE_TO_RATELIMIT"
-                final_label = "Benign"  
+                final_label = "Benign"
             else:
-                # Re-raise if it's not a 429
                 raise
 
-        # If we didn’t skip, let's go get Mistral’s response
         if mistral_resp != "SKIPPED_DUE_TO_RATELIMIT":
             if "jailbreak" in mistral_resp.lower():
                 final_label = "Jailbreak"
             else:
                 final_label = "Benign"
 
-    # Log or return as usual
+    insert_prompt_log(prompt, final_label, avg_similarity, mistral_resp)
+
     return {
         "Prompt": prompt,
         "FAISS_Similarity": avg_similarity,
@@ -89,16 +72,20 @@ def hybrid_jailbreak_detection(prompt, index):
         "Hybrid_Prediction": final_label
     }
 
+def feedback_loop():
+    false_negatives = get_false_negatives()
+    if false_negatives:
+        print(f"[Feedback] Found {len(false_negatives)} false negatives. Updating FAISS...")
+        update_faiss_index(false_negatives)
+        print("[Feedback] FAISS index updated.")
+    else:
+        print("[Feedback] No false negatives found.")
 
 def main():
-    # Data
     df_train, df_test = load_data()
-
-    # Build FAISS index if not found
     build_index_if_needed(df_train)
     index = load_faiss_index()
 
-    # Evaluate on test
     results = []
     for i, prompt in enumerate(df_test["prompt"]):
         print(f"Evaluating prompt {i+1}/{len(df_test)}")
@@ -109,7 +96,6 @@ def main():
     df_out["pred_label"] = df_out["Hybrid_Prediction"].apply(lambda x: 1 if x == "Jailbreak" else 0)
     df_out["true_label"] = df_test["label"]
 
-    # Metrics
     accuracy = accuracy_score(df_out["true_label"], df_out["pred_label"])
     precision = precision_score(df_out["true_label"], df_out["pred_label"])
     recall = recall_score(df_out["true_label"], df_out["pred_label"])
@@ -123,6 +109,9 @@ def main():
 
     df_out.to_csv("hybrid_faiss_mistral_results.csv", index=False)
     print("[Done] Results saved to 'hybrid_faiss_mistral_results.csv'.")
+
+    # Trigger Feedback Loop
+    feedback_loop()
 
 if __name__ == "__main__":
     main()

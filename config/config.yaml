@@ -18,6 +18,6 @@ faiss_index_path: "data/faiss.index"
 
 # MongoDB usage (optional)
 use_mongodb: true
-mongodb_uri: "mongodb://localhost:27017/"
-database_name: "hybrid_jailbreak"
-collection_name: "prompts_log"
+mongodb_uri: "mongodb://localhost:27017"
+database_name: "jailbreak_db"
+collection_name: "prompt_logs"

@@ -22,7 +22,7 @@ else:
 
 def insert_prompt_log(prompt, classification, similarity, mistral_response=None):
     if collection is None:
-        return  # or handle logging differently
+        return
     doc = {
         "prompt": prompt,
         "classification": classification,
@@ -31,3 +31,23 @@ def insert_prompt_log(prompt, classification, similarity, mistral_response=None)
     }
     collection.insert_one(doc)
 
+def get_false_negatives():
+    if collection is None:
+        print("[MongoDB] No collection initialized.")
+        return []
+
+    # Assume FAISS flags Benign if similarity < 0.5
+    FAISS_SIMILARITY_THRESHOLD = 0.5
+
+    # Find prompts where FAISS says Benign but Mistral flagged Jailbreak
+    false_negatives = list(collection.find({
+        "similarity": { "$lt": FAISS_SIMILARITY_THRESHOLD },
+        "mistral_response": { "$regex": "jailbreak", "$options": "i" }
+    }))
+
+    print(f"[DEBUG] Found {len(false_negatives)} false negatives in MongoDB.")
+
+    for doc in false_negatives:
+        print(f"[DEBUG] Prompt: {doc['prompt']} | Mistral Response: {doc['mistral_response']}")
+
+    return [doc["prompt"] for doc in false_negatives]

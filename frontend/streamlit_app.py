@@ -15,11 +15,12 @@ sys.path.append(os.path.join(os.path.dirname(__file__), ".."))  # import from ba
 from backend.faiss_index import (
     load_faiss_index,
     faiss_similarity_check,
-    FAISS_SIMILARITY_THRESHOLD
+    FAISS_SIMILARITY_THRESHOLD,
+    update_faiss_index
 )
 from backend.mistral_api import call_mistral_with_retry
-from backend.database.mongodb import insert_prompt_log  # logs
-from backend.hybrid import SIMILARITY_THRESHOLD, FAISS_INDEX_PATH
+from backend.database.mongodb import insert_prompt_log, get_false_negatives
+from backend.hybrid import SIMILARITY_THRESHOLD
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH = os.path.join(BASE_DIR, "..", "config", "config.yaml")
@@ -29,7 +30,7 @@ with open(CONFIG_PATH, "r") as f:
 
 TRAIN_CSV = config["train_csv"]
 
-# Beobrutalistic Style
+# Neobrutalistic Style
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&display=swap');
@@ -74,8 +75,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Sidebar navigation
-page = st.sidebar.selectbox("Navigate", ["Home", "Statistics"])
+# Sidebar 
+page = st.sidebar.selectbox("Go to", ["Home", "Statistics", "Feedback Loop"])
 
 if page == "Home":
     st.title("Shick Shack")
@@ -118,7 +119,7 @@ if page == "Home":
             try:
                 insert_prompt_log(prompt_text, final_label, similarity, mistral_resp)
             except:
-                pass
+                print(f"[MongoDB Logging Error]: {e}")
 
             st.write(f"**Vector Similarity:** {similarity:.2f} (threshold: {SIMILARITY_THRESHOLD})")
             st.write(f"**Intent Analysis:** {mistral_resp}")
@@ -211,3 +212,15 @@ elif page == "Statistics":
         st.error("Training CSV not found. Please check the config file.")
     except Exception as e:
         st.error(f"An error occurred: {e}")
+
+elif page == "Feedback Loop":
+    st.title("Feedback Loop: Improve Primary Phase")
+
+    if st.button("Run Feedback Loop"):
+        with st.spinner("Fetching false negatives and updating FAISS index..."):
+            false_negatives = get_false_negatives()
+            if false_negatives:
+                update_faiss_index(false_negatives)
+                st.success(f"FAISS index updated with {len(false_negatives)} new prompt(s).")
+            else:
+                st.info("FAISS index is up-to-date.")

@@ -42,3 +42,24 @@ def faiss_similarity_check(prompt, index):
     distances, _ = index.search(prompt_embedding, FAISS_K)
     avg_similarity = float(np.mean(distances[0]))
     return avg_similarity
+
+def update_faiss_index(new_prompts):
+    """
+    Incrementally add new prompts to the existing FAISS index.
+    """
+    if not new_prompts:
+        print("[FAISS] No new prompts to add.")
+        return
+
+    # Load existing index
+    index = load_faiss_index()
+
+    # Encode new prompts
+    new_embeddings = embed_model.encode(new_prompts, show_progress_bar=True)
+    faiss.normalize_L2(new_embeddings)
+    new_embeddings = new_embeddings.astype("float32")
+
+    # Add new embeddings to FAISS
+    index.add(new_embeddings)
+    faiss.write_index(index, FAISS_INDEX_PATH)
+    print(f"[FAISS] Index updated with {len(new_prompts)} new vectors.")
