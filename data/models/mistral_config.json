@@ -1,1 +1,0 @@
-{"model": "mistral-large-latest", "temperature": 0, "max_retries": 2, "prompt_messages": [["system", "You are an AI security assistant. Analyze user prompts and classify them as 'Jailbreak' or 'Benign'."], ["human", "{input}"]]}
