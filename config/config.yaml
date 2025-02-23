@@ -1,0 +1,23 @@
+# config/config.yaml
+
+# If you want to specify your Mistral model:
+mistral_model: "mistral-large-latest"
+
+# FAISS similarity threshold
+faiss_similarity_threshold: 0.5
+
+# Number of neighbors to fetch from FAISS
+faiss_k: 3
+
+# Paths to your balanced data
+train_csv: "data/jailbreak_dataset_train.csv"
+test_csv: "data/jailbreak_dataset_test.csv"
+
+# Where to store or load the FAISS index
+faiss_index_path: "data/faiss.index"
+
+# MongoDB usage (optional)
+use_mongodb: true
+mongodb_uri: "mongodb://localhost:27017"
+database_name: "jailbreak_db"
+collection_name: "prompt_logs"
