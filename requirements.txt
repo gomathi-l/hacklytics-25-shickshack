@@ -1,0 +1,13 @@
+faiss-cpu
+langchain_mistralai
+langchain_core
+sentence-transformers
+pandas
+numpy
+scikit-learn
+pyyaml
+requests
+openai
+pymongo
+transformers
+torch
